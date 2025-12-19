@@ -1,0 +1,4 @@
+
+run the "runme.bat" file to run the game (maybe)
+if it dont run, then run "python -m pip install pygame "wordfreq[en]" in terminal and you are good
+
