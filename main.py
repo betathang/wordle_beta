@@ -2,13 +2,12 @@ import pygame
 import sys
 from entities.boardcast import boardcast
 from entities.draw_things import *
-from wordfreq import top_n_list
 from entities.background import background_works
 import random
 
 pygame.init()
 
-screen_width = 518
+screen_width = 520
 screen_height = 600
 
 #icon = pygame.image.load("icon.png")
@@ -17,12 +16,13 @@ pygame.display.set_caption("WOORRRRDDDDLLLLLLEEEE")
 
 
 
-background_main = background_works("entities/entity2/3.jpg",screen_width,screen_height)
+background_main = background_works("entities/entity2/4.png",screen_width,screen_height)
 
 box_height = 58
 box_width = 44
 box_distance = 6
 
+#color
 WHITE = (255,255,255)
 GRAY = (129, 131, 132,200)
 DARK_GRAY = (58, 58, 60, 200)
@@ -36,23 +36,20 @@ word = []
 for i in range(0,6):
     word.append("")
 
-all_words = top_n_list("en", 500000)
-valid_words_list = [w.upper() for w in all_words if len(w) == 5]
+
+with open("entities/entity2/valid-wordle-words.txt", "r", encoding="utf-8") as f:
+    valid_words_list = [line.strip().upper() for line in f]
 valid_words_set = set(valid_words_list)
 
 line = 0
 keyboard_input_idk = {}
-kb_color = {}
 dt = 0 
-for i in range(ord("a"), ord('z') + 1):
-    kb_color[(chr(i)).upper()] = GRAY
-kb_color["ENTER"] = GRAY
-kb_color["BACKSPACE"] = GRAY
+
 #used_key = 0 =>gray, -1 => dark gray, 1=> yellow, 2=> green
 
 character_box_color = [[GRAY for _ in range(5)] for _ in range(6)]
 
-
+create_kb(screen)
 
 running = True
 reason_of_stop_running = None
@@ -60,62 +57,89 @@ reason_of_stop_running = None
 answer = random.choice(valid_words_list)
 
 bc = []
+events = []
+
+current_cur = 1
+is_mouse_down = 0
+
+
 while running:
+    is_mouse_down = 0
+    events.clear()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:  
             running = False
             reason_of_stop_running = 0
         if event.type == pygame.KEYDOWN:
             key_name = pygame.key.name(event.key).upper()
-            if pygame.K_a <= event.key <= pygame.K_z and len(word[line])<5:
-                word[line] = word[line] + key_name.upper()
+            if pygame.K_a <= event.key <= pygame.K_z:
+                events.append(key_name.upper())
             elif event.key == pygame.K_BACKSPACE:
-                word[line] = word[line][:-1]
+                events.append("DELETE")
             elif event.key == pygame.K_RETURN:
-                if len(word[line])<5:
-                    for i in bc:
-                        i.y += 30
-                    bc = [boardcast("5 characters word ONLY")] + bc
-                elif word[line] not in valid_words_set:
-                    for i in bc:
-                        i.y += 30
-                    bc = [boardcast("TF is this word?")] + bc
-                else:
-                    tmp = list(answer)
-                    for i in range(5):
-                        if(word[line][i]==answer[i]):
-                            tmp.remove(answer[i])
-                            character_box_color[line][i] = GREEN
-                            kb_color[word[line][i]] = GREEN
-                    for i in range(5):
-                        if word[line][i]!=answer[i]:
-                            if word[line][i] in tmp:
-                                tmp.remove(word[line][i])
-                                character_box_color[line][i] = YELLOW
-                                if(kb_color[word[line][i]] == GRAY):
-                                    kb_color[word[line][i]] = YELLOW
-                            else:
-                                character_box_color[line][i] = DARK_GRAY
-                                if(kb_color[word[line][i]]==GRAY):
-                                    kb_color[word[line][i]] = DARK_GRAY
-                    
-                    if(word[line] == answer):
-                        running = False
-                        reason_of_stop_running = 2
-                        break
-                    line += 1
-                    if(line == 6):
-                        running = False
-                        reason_of_stop_running = 1
- 
+                events.append("ENTER")
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            is_mouse_down = 1
+
+    current_cur = 1
+    for i in kb_dict:
+        if kb_dict[i].is_mouse_on():
+            current_cur = 2
+            if is_mouse_down:
+                events.append(i)
+    if(current_cur == 1):
+        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+    else:
+        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
 
 
+    for i in events:
+        if i == "DELETE":
+            word[line] = word[line][:-1]
+        elif(i=="ENTER"):
+            if len(word[line])<5:
+                for i in bc:
+                    i.y += 30
+                bc = [boardcast("5 characters word ONLY")] + bc
+            elif word[line] not in valid_words_set:
+                for i in bc:
+                    i.y += 30
+                bc = [boardcast("TF is this word?")] + bc
+            else:
+                tmp = list(answer)
+                for i in range(5):
+                    if(word[line][i]==answer[i]):
+                        tmp.remove(answer[i])
+                        character_box_color[line][i] = GREEN
+                        kb_dict[word[line][i]].color = GREEN
+                for i in range(5):
+                    if word[line][i]!=answer[i]:
+                        if word[line][i] in tmp:
+                            tmp.remove(word[line][i])
+                            character_box_color[line][i] = YELLOW
+                            if(kb_dict[word[line][i]].color == GRAY):
+                                kb_dict[word[line][i]].color = YELLOW
+                        else:
+                            character_box_color[line][i] = DARK_GRAY
+                            if(kb_dict[word[line][i]].color==GRAY):
+                                kb_dict[word[line][i]].color = DARK_GRAY
+                if(word[line] == answer):
+                    running = False
+                    reason_of_stop_running = 2
+                    break
+                line += 1
+                if(line == 6):
+                    running = False
+                    reason_of_stop_running = 1
+        else:
+            if len(word[line])<5:
+                word[line] = word[line] + i
                 
 
     #BACKGROUND WORK
     background_main.draw(screen,dt)
 
-    draw_kb(screen,kb_color)
+    draw_kb(screen)
     draw_maingame(screen,character_box_color,word)
 
     for i in range(len(bc)):
@@ -146,7 +170,7 @@ if(reason_of_stop_running == 1 or reason_of_stop_running == 2):
                 running = False
 
         background_main.draw(screen,dt)
-        draw_kb(screen,kb_color)
+        draw_kb(screen)
         draw_maingame(screen,character_box_color,word)
 
 
